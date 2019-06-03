@@ -10,7 +10,7 @@ import (
 
 // Plenty of time for a goroutine to reach a send to a channel if not
 // blocked or doing something slow.
-const blocked = 10 * time.Millisecond
+const blocked = 100 * time.Millisecond
 
 // Expect fails the test if do doesn't return very quickly, typically after
 // blocking for a single channel operation.
