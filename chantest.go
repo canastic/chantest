@@ -23,8 +23,8 @@ func AssertRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) interfa
 }
 
 // AssertNoRecv calls Before.AssertNoRecv on Default.
-func AssertNoRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) {
-	Default.AssertNoRecv(t, ch, msgAndArgs...)
+func AssertNoRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) interface{} {
+	return Default.AssertNoRecv(t, ch, msgAndArgs...)
 }
 
 // AssertSend calls Before.AssertSend on Default.
@@ -73,11 +73,14 @@ func (d Before) AssertRecv(t *testing.T, ch interface{}, msgAndArgs ...interface
 
 // AssertNoRecv asserts that nothing is received from ch, which must be a channel, for a very short period of time.
 // custom msgAndArgs cand be added, with first argument being the formatted string
-func (d Before) AssertNoRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) {
+func (d Before) AssertNoRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) interface{} {
 	t.Helper()
-	if _, ok := d.assertRecv(t, ch); ok {
-		t.Fatal(defaultOrCustomMessage("unexpected channel receive", msgAndArgs...))
+	v, ok := d.assertRecv(t, ch)
+	if !ok {
+		return nil
 	}
+	t.Fatal(defaultOrCustomMessage("unexpected channel receive", msgAndArgs...))
+	return v
 }
 
 // AssertSend asserts that v is quickly sent from ch, which must be a channel.
