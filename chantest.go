@@ -8,9 +8,37 @@ import (
 	"time"
 )
 
-// Plenty of time for a goroutine to reach a send to a channel if not
-// blocked or doing something slow.
-const blocked = 100 * time.Millisecond
+// Default shold be plenty of time for a goroutine to reach a send to a channel
+// if not blocked or doing something slow.
+const Default = Before(100 * time.Millisecond)
+
+// Expect calls Before.Expect on Default.
+func Expect(t *testing.T, do func()) {
+	Default.Expect(t, do)
+}
+
+// AssertRecv calls Before.AssertRecv on Default.
+func AssertRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) interface{} {
+	return Default.AssertRecv(t, ch, msgAndArgs...)
+}
+
+// AssertNoRecv calls Before.AssertNoRecv on Default.
+func AssertNoRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) {
+	Default.AssertNoRecv(t, ch, msgAndArgs...)
+}
+
+// AssertSend calls Before.AssertSend on Default.
+func AssertSend(t *testing.T, ch, v interface{}, msgAndArgs ...interface{}) {
+	Default.AssertSend(t, ch, v, msgAndArgs...)
+}
+
+// AssertNoSend calls Before.AssertNoSend on Default.
+func AssertNoSend(t *testing.T, ch, v interface{}, msgAndArgs ...interface{}) {
+	Default.AssertNoSend(t, ch, v, msgAndArgs...)
+}
+
+// Before is the amount of time to wait before failing an expectation.
+type Before time.Duration
 
 // Expect fails the test if do doesn't return very quickly, typically after
 // blocking for a single channel operation.
@@ -18,7 +46,7 @@ const blocked = 100 * time.Millisecond
 // Useful for testing that a goroutine is unblocked and has reached a certain
 // point that somehow reads or sends to the do function, and to synchronize
 // its continuation with
-func Expect(t *testing.T, do func()) {
+func (d Before) Expect(t *testing.T, do func()) {
 	t.Helper()
 	done := make(chan struct{})
 	go func() {
@@ -27,16 +55,16 @@ func Expect(t *testing.T, do func()) {
 	}()
 	select {
 	case <-done:
-	case <-time.After(blocked):
+	case <-time.After(time.Duration(d)):
 		t.Fatal("timeout waiting for channel send or receive")
 	}
 }
 
 // AssertRecv asserts that something is quickly received from ch, which must be a channel.
 // custom msgAndArgs cand be added, with first argument being the formatted string
-func AssertRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) interface{} {
+func (d Before) AssertRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) interface{} {
 	t.Helper()
-	v, ok := assertRecv(t, ch)
+	v, ok := d.assertRecv(t, ch)
 	if !ok {
 		t.Fatal(defaultOrCustomMessage("timeout waiting for channel send or receive", msgAndArgs...))
 	}
@@ -45,32 +73,32 @@ func AssertRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) interfa
 
 // AssertNoRecv asserts that nothing is received from ch, which must be a channel, for a very short period of time.
 // custom msgAndArgs cand be added, with first argument being the formatted string
-func AssertNoRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) {
+func (d Before) AssertNoRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) {
 	t.Helper()
-	if _, ok := assertRecv(t, ch); ok {
+	if _, ok := d.assertRecv(t, ch); ok {
 		t.Fatal(defaultOrCustomMessage("unexpected channel receive", msgAndArgs...))
 	}
 }
 
 // AssertSend asserts that v is quickly sent from ch, which must be a channel.
 // custom msgAndArgs cand be added, with first argument being the formatted string
-func AssertSend(t *testing.T, ch, v interface{}, msgAndArgs ...interface{}) {
+func (d Before) AssertSend(t *testing.T, ch, v interface{}, msgAndArgs ...interface{}) {
 	t.Helper()
-	if !assertSend(t, ch, v) {
+	if !d.assertSend(t, ch, v) {
 		t.Fatal(defaultOrCustomMessage("timeout waiting for channel send or receive", msgAndArgs...))
 	}
 }
 
 // AssertNoSend asserts that v is not sent to ch, which must be a channel, for a very short period of time.
 // custom msgAndArgs cand be added, with first argument being the formatted string
-func AssertNoSend(t *testing.T, ch, v interface{}, msgAndArgs ...interface{}) {
+func (d Before) AssertNoSend(t *testing.T, ch, v interface{}, msgAndArgs ...interface{}) {
 	t.Helper()
-	if assertSend(t, ch, v) {
+	if d.assertSend(t, ch, v) {
 		t.Fatal(defaultOrCustomMessage("unexpected channel receive", msgAndArgs...))
 	}
 }
 
-func assertRecv(t *testing.T, ch interface{}) (interface{}, bool) {
+func (d Before) assertRecv(t *testing.T, ch interface{}) (interface{}, bool) {
 	t.Helper()
 
 	// lol no generics
@@ -80,7 +108,7 @@ func assertRecv(t *testing.T, ch interface{}) (interface{}, bool) {
 	// select {
 	// case v = <-ch:
 	//    chosen = 0
-	// case <-time.After(blocked):
+	// case <-time.After(time.Duration(d)):
 	//    chosen = 1
 	// }
 	chosen, recv, _ := reflect.Select([]reflect.SelectCase{{
@@ -88,7 +116,7 @@ func assertRecv(t *testing.T, ch interface{}) (interface{}, bool) {
 		Chan: reflect.ValueOf(ch),
 	}, {
 		Dir:  reflect.SelectRecv,
-		Chan: reflect.ValueOf(time.After(blocked)),
+		Chan: reflect.ValueOf(time.After(time.Duration(d))),
 	}})
 	if chosen != 0 {
 		return nil, false
@@ -97,7 +125,7 @@ func assertRecv(t *testing.T, ch interface{}) (interface{}, bool) {
 	return recv.Interface(), true
 }
 
-func assertSend(t *testing.T, ch, v interface{}) bool {
+func (d Before) assertSend(t *testing.T, ch, v interface{}) bool {
 	t.Helper()
 
 	// lol no generics
@@ -107,7 +135,7 @@ func assertSend(t *testing.T, ch, v interface{}) bool {
 	// select {
 	// case ch <- v:
 	//    chosen = 0
-	// case <-time.After(blocked):
+	// case <-time.After(time.Duration(d)):
 	//    chosen = 1
 	// }
 	chosen, _, _ := reflect.Select([]reflect.SelectCase{{
@@ -116,7 +144,7 @@ func assertSend(t *testing.T, ch, v interface{}) bool {
 		Send: reflect.ValueOf(v),
 	}, {
 		Dir:  reflect.SelectRecv,
-		Chan: reflect.ValueOf(time.After(blocked)),
+		Chan: reflect.ValueOf(time.After(time.Duration(d))),
 	}})
 
 	return chosen == 0
