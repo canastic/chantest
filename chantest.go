@@ -14,26 +14,31 @@ const Default = Before(100 * time.Millisecond)
 
 // Expect calls Before.Expect on Default.
 func Expect(t *testing.T, do func()) {
+	t.Helper()
 	Default.Expect(t, do)
 }
 
 // AssertRecv calls Before.AssertRecv on Default.
 func AssertRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) interface{} {
+	t.Helper()
 	return Default.AssertRecv(t, ch, msgAndArgs...)
 }
 
 // AssertNoRecv calls Before.AssertNoRecv on Default.
 func AssertNoRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) interface{} {
+	t.Helper()
 	return Default.AssertNoRecv(t, ch, msgAndArgs...)
 }
 
 // AssertSend calls Before.AssertSend on Default.
 func AssertSend(t *testing.T, ch, v interface{}, msgAndArgs ...interface{}) {
+	t.Helper()
 	Default.AssertSend(t, ch, v, msgAndArgs...)
 }
 
 // AssertNoSend calls Before.AssertNoSend on Default.
 func AssertNoSend(t *testing.T, ch, v interface{}, msgAndArgs ...interface{}) {
+	t.Helper()
 	Default.AssertNoSend(t, ch, v, msgAndArgs...)
 }
 
