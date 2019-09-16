@@ -4,7 +4,6 @@ package chantest
 import (
 	"fmt"
 	"reflect"
-	"testing"
 	"time"
 )
 
@@ -13,31 +12,31 @@ import (
 const Default = Before(100 * time.Millisecond)
 
 // Expect calls Before.Expect on Default.
-func Expect(t *testing.T, do func()) {
+func Expect(t TestingT, do func()) {
 	t.Helper()
 	Default.Expect(t, do)
 }
 
 // AssertRecv calls Before.AssertRecv on Default.
-func AssertRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) interface{} {
+func AssertRecv(t TestingT, ch interface{}, msgAndArgs ...interface{}) interface{} {
 	t.Helper()
 	return Default.AssertRecv(t, ch, msgAndArgs...)
 }
 
 // AssertNoRecv calls Before.AssertNoRecv on Default.
-func AssertNoRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) interface{} {
+func AssertNoRecv(t TestingT, ch interface{}, msgAndArgs ...interface{}) interface{} {
 	t.Helper()
 	return Default.AssertNoRecv(t, ch, msgAndArgs...)
 }
 
 // AssertSend calls Before.AssertSend on Default.
-func AssertSend(t *testing.T, ch, v interface{}, msgAndArgs ...interface{}) {
+func AssertSend(t TestingT, ch, v interface{}, msgAndArgs ...interface{}) {
 	t.Helper()
 	Default.AssertSend(t, ch, v, msgAndArgs...)
 }
 
 // AssertNoSend calls Before.AssertNoSend on Default.
-func AssertNoSend(t *testing.T, ch, v interface{}, msgAndArgs ...interface{}) {
+func AssertNoSend(t TestingT, ch, v interface{}, msgAndArgs ...interface{}) {
 	t.Helper()
 	Default.AssertNoSend(t, ch, v, msgAndArgs...)
 }
@@ -51,7 +50,7 @@ type Before time.Duration
 // Useful for testing that a goroutine is unblocked and has reached a certain
 // point that somehow reads or sends to the do function, and to synchronize
 // its continuation with
-func (d Before) Expect(t *testing.T, do func()) {
+func (d Before) Expect(t TestingT, do func()) {
 	t.Helper()
 	done := make(chan struct{})
 	go func() {
@@ -67,7 +66,7 @@ func (d Before) Expect(t *testing.T, do func()) {
 
 // AssertRecv asserts that something is quickly received from ch, which must be a channel.
 // custom msgAndArgs cand be added, with first argument being the formatted string
-func (d Before) AssertRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) interface{} {
+func (d Before) AssertRecv(t TestingT, ch interface{}, msgAndArgs ...interface{}) interface{} {
 	t.Helper()
 	v, ok := d.assertRecv(t, ch)
 	if !ok {
@@ -78,7 +77,7 @@ func (d Before) AssertRecv(t *testing.T, ch interface{}, msgAndArgs ...interface
 
 // AssertNoRecv asserts that nothing is received from ch, which must be a channel, for a very short period of time.
 // custom msgAndArgs cand be added, with first argument being the formatted string
-func (d Before) AssertNoRecv(t *testing.T, ch interface{}, msgAndArgs ...interface{}) interface{} {
+func (d Before) AssertNoRecv(t TestingT, ch interface{}, msgAndArgs ...interface{}) interface{} {
 	t.Helper()
 	v, ok := d.assertRecv(t, ch)
 	if !ok {
@@ -90,7 +89,7 @@ func (d Before) AssertNoRecv(t *testing.T, ch interface{}, msgAndArgs ...interfa
 
 // AssertSend asserts that v is quickly sent from ch, which must be a channel.
 // custom msgAndArgs cand be added, with first argument being the formatted string
-func (d Before) AssertSend(t *testing.T, ch, v interface{}, msgAndArgs ...interface{}) {
+func (d Before) AssertSend(t TestingT, ch, v interface{}, msgAndArgs ...interface{}) {
 	t.Helper()
 	if !d.assertSend(t, ch, v) {
 		t.Fatal(defaultOrCustomMessage("timeout waiting for channel send or receive", msgAndArgs...))
@@ -99,14 +98,14 @@ func (d Before) AssertSend(t *testing.T, ch, v interface{}, msgAndArgs ...interf
 
 // AssertNoSend asserts that v is not sent to ch, which must be a channel, for a very short period of time.
 // custom msgAndArgs cand be added, with first argument being the formatted string
-func (d Before) AssertNoSend(t *testing.T, ch, v interface{}, msgAndArgs ...interface{}) {
+func (d Before) AssertNoSend(t TestingT, ch, v interface{}, msgAndArgs ...interface{}) {
 	t.Helper()
 	if d.assertSend(t, ch, v) {
 		t.Fatal(defaultOrCustomMessage("unexpected channel receive", msgAndArgs...))
 	}
 }
 
-func (d Before) assertRecv(t *testing.T, ch interface{}) (interface{}, bool) {
+func (d Before) assertRecv(t TestingT, ch interface{}) (interface{}, bool) {
 	t.Helper()
 
 	// lol no generics
@@ -133,7 +132,7 @@ func (d Before) assertRecv(t *testing.T, ch interface{}) (interface{}, bool) {
 	return recv.Interface(), true
 }
 
-func (d Before) assertSend(t *testing.T, ch, v interface{}) bool {
+func (d Before) assertSend(t TestingT, ch, v interface{}) bool {
 	t.Helper()
 
 	// lol no generics
@@ -180,4 +179,10 @@ func messageFromMsgAndArgs(msgAndArgs ...interface{}) string {
 		return fmt.Sprintf(msgAndArgs[0].(string), msgAndArgs[1:]...)
 	}
 	return ""
+}
+
+// TestingT is an interface wrapper around *testing.T.
+type TestingT interface {
+	Helper()
+	Fatal(string)
 }
