@@ -184,5 +184,5 @@ func messageFromMsgAndArgs(msgAndArgs ...interface{}) string {
 // TestingT is an interface wrapper around *testing.T.
 type TestingT interface {
 	Helper()
-	Fatal(string)
+	Fatal(...interface{})
 }
